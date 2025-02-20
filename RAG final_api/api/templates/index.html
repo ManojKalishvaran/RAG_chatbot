@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat with RAG</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #c0392b;
+            --gold: #d4af37;
+            --light-gold: #f1e4b4;
+            --dark-bg: #1a1a1a;
+            --light-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg), var(--primary-color));
+            margin: 0;
+            padding: 40px;
+            min-height: 100vh;
+            color: var(--light-bg);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--gold);
+            font-size: 2.5em;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #upload-container {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid var(--gold);
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: var(--light-gold);
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-label {
+            display: inline-block;
+            padding: 12px 25px;
+            background: var(--gold);
+            color: var(--dark-bg);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            margin-right: 15px;
+        }
+
+        .file-upload-label:hover {
+            background: var(--light-gold);
+            transform: translateY(-2px);
+        }
+
+        button {
+            background: linear-gradient(45deg, var(--gold), var(--light-gold));
+            color: var(--dark-bg);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
+        }
+
+        #chat-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        #chat-history {
+            height: 500px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--gold);
+            border-radius: 15px;
+            padding: 20px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background: rgba(212, 175, 55, 0.1);
+            border-left: 4px solid var(--gold);
+            margin-left: auto;
+        }
+
+        .bot-message {
+            background: rgba(255, 255, 255, 0.1);
+            border-right: 4px solid var(--light-gold);
+        }
+
+        #question {
+            width: calc(100% - 130px);
+            padding: 15px;
+            border: 1px solid var(--gold);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--light-bg);
+            margin-right: 10px;
+        }
+
+        #question:focus {
+            outline: none;
+            border-color: var(--light-gold);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+        }
+
+        #loading {
+            color: var(--light-gold);
+            margin: 15px 0;
+            font-style: italic;
+        }
+
+        .error {
+            color: var(--accent-color);
+            background: rgba(192, 57, 43, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .success {
+            color: #ffffff;
+            background: rgba(39, 174, 96, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--gold);
+            border-radius: 4px;
+        }
+
+        #selected-file-name {
+            color: var(--light-gold);
+            margin-left: 15px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-robot"></i> RAG Chat System</h1>
+        
+        <div id="upload-container">
+            <h2><i class="fas fa-file-upload"></i> Upload Document</h2>
+            <label class="file-upload-label">
+                <i class="fas fa-file-pdf"></i> Choose PDF
+                <input type="file" id="pdf-file" accept=".pdf">
+            </label>
+            <span id="selected-file-name"></span>
+            <button onclick="uploadFile()"><i class="fas fa-upload"></i> Upload</button>
+            <div id="loading"><i class="fas fa-spinner fa-spin"></i> Upload File...</div>
+            <div id="upload-status"></div>
+        </div>
+
+        <div id="chat-container">
+            <div id="chat-history"></div>
+            <div style="display: flex; align-items: center;">
+                <input type="text" id="question" placeholder="Ask your question...">
+                <button onclick="askQuestion()"><i class="fas fa-paper-plane"></i> Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update file name display
+        document.getElementById('pdf-file').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'No file selected';
+            document.getElementById('selected-file-name').textContent = fileName;
+        });
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('pdf-file');
+            const loadingDiv = document.getElementById('loading');
+            const statusDiv = document.getElementById('upload-status');
+            const file = fileInput.files[0];
+            
+            statusDiv.innerHTML = '';
+            
+            if (!file) {
+                statusDiv.innerHTML = '<div class="error"><i class="fas fa-exclamation-circle"></i> Please select a file</div>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                loadingDiv.style.display = 'block';
+                statusDiv.innerHTML = '<div class="info"><i class="fas fa-info-circle"></i> Uploading file...</div>';
+                
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = '<div class="success"><i class="fas fa-check-circle"></i> Chat Now</div>';
+                    document.getElementById('chat-container').style.display = 'block';
+                } else {
+                    statusDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-circle"></i> Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error"><i class="fas fa-exclamation-circle"></i> Error uploading file: ${error.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+
+        async function askQuestion() {
+            const questionInput = document.getElementById('question');
+            const question = questionInput.value.trim();
+            
+            if (!question) return;
+
+            addMessage(question, 'user');
+            questionInput.value = '';
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ question })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addMessage(data.answer, 'bot');
+                } else {
+                    addMessage(`Error: ${data.error}`, 'bot');
+                }
+            } catch (error) {
+                addMessage(`Error: ${error.message}`, 'bot');
+            }
+        }
+
+        function addMessage(message, sender) {
+            const chatHistory = document.getElementById('chat-history');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            const icon = sender === 'user' ? 'fa-user' : 'fa-robot';
+            messageDiv.innerHTML = `<i class="fas ${icon}"></i> ${  message}`;
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        document.getElementById('question').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
